@@ -36,6 +36,7 @@
 #include <uk/essentials.h>
 #include "kasan_internal.h"
 #include <uk/kasan.h>
+#include "read_allsymbol.h"
 
 static int kasan_ready;
 
@@ -171,14 +172,13 @@ shadow_check(uintptr_t addr, size_t size, bool read)
 	}
 
 	if (unlikely(!valid)) {
-		UK_CRASH("===========KernelAddressSanitizer===========\n"
-			"ERROR:\n"
-			"* invalid access to address %p\n"
-			"* %s of size %lu\n"
-			"* redzone code 0x%x (%s)\n"
-			"============================================\n",
-			(void *)addr, (read ? "read" : "write"), size, code,
-			code_name(code));
+		uk_pr_err("=================================================================\n");
+	        uk_pr_err("==732545==ERROR: AddressSanitizer: %s on address %p at pc 0x0000004c7fcd \n", code_name(code), (void *)addr);
+		uk_pr_err("%s of size %d at %p thread T0\n", (read ? "READ" : "WRITE"), size, (void *) addr);
+		//, (read ? "read" : "write"), size, code);
+		uk_dump_backtrace();
+		uk_pr_err("==732545==ABORTING\n" );
+		ukplat_crash();
 	}
 }
 

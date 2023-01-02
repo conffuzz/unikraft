@@ -84,7 +84,7 @@ extern "C" {
 #define UK_CRASH(fmt, ...)						\
 	do {								\
 		uk_pr_crit((fmt), ##__VA_ARGS__);			\
-		/* TODO: stack trace */					\
+		uk_dump_backtrace();					\
 		ukplat_terminate(UKPLAT_CRASH);				\
 	} while (0)
 

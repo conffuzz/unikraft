@@ -57,7 +57,7 @@ extern "C" {
 #define KASAN_KMALLOC_REDZONE_SIZE 8
 
 /* Shadow mem size */
-#define KASAN_MD_SHADOW_SIZE (1 << 20) /* 1 MB */
+#define KASAN_MD_SHADOW_SIZE (1 << 22) /* 4 MB */
 
 /* Initialize KASAN subsystem. */
 void init_kasan(void *base);

@@ -3,6 +3,27 @@ LINUXU_LDFLAGS-y += -Wl,-e,_liblinuxuplat_start
 ##
 ## Link image
 ##
+
+
+# allsyms tool settings
+ALLSYMS_TOOL         := $(BUILD_DIR)/allsyms2assembly
+ALLSYMS_TOOL_SRC     := $(CONFIG_UK_BASE)/support/kallsyms/kallsyms.c
+
+ifeq ($(CONFIG_DEBUG_BACK_TRACE),y)
+#todo change to build
+SYMBOL_SRC       := $(BUILD_DIR)/symbol.S
+SYMBOL_OBJ       := $(call src2obj,liblinuxuplat,$(SYMBOL_SRC))
+endif
+
+$(ALLSYMS_TOOL):$(ALLSYMS_TOOL_SRC)
+ifeq ($(CONFIG_DEBUG_BACK_TRACE),y)
+	$(HOSTCC) $(HOST_EXTRACFLAGS) $(HOSTCFLAGS) $< -o $(ALLSYMS_TOOL)
+endif
+
+allsyms:$(ALLSYMS_TOOL)
+
+.PHONY: allsyms
+
 LINUXU_IMAGE := $(BUILD_DIR)/$(CONFIG_UK_NAME)_linuxu-$(CONFIG_UK_ARCH)
 LINUXU_DEBUG_IMAGE := $(LINUXU_IMAGE).dbg
 LINUXU_LD_SCRIPT_FLAGS := $(addprefix -Wl$(comma)-T$(comma),\
@@ -10,7 +31,7 @@ LINUXU_LD_SCRIPT_FLAGS := $(addprefix -Wl$(comma)-T$(comma),\
 
 $(LINUXU_DEBUG_IMAGE): $(LINUXU_ALIBS) $(LINUXU_ALIBS-y) \
 		       $(LINUXU_OLIBS) $(LINUXU_OLIBS-y) \
-		       $(UK_ALIBS) $(UK_ALIBS-y) $(UK_OLIBS) $(UK_OLIBS-y)
+		       $(UK_ALIBS) $(UK_ALIBS-y) $(UK_OLIBS) $(UK_OLIBS-y) allsyms
 	$(call build_cmd,LD,,$@,\
 	       $(LD) $(LDFLAGS) $(LDFLAGS-y) \
 		     $(LINUXU_LDFLAGS) $(LINUXU_LDFLAGS-y) \
@@ -22,6 +43,43 @@ $(LINUXU_DEBUG_IMAGE): $(LINUXU_ALIBS) $(LINUXU_ALIBS-y) \
 		     -Wl$(comma)--end-group \
 		     $(LINUXU_LD_SCRIPT_FLAGS) \
 		     -o $@)
+
+# If dumping backtrace is supported, we should link the image 3 times after
+# getting the symbol name assembly src file.
+ifeq ($(CONFIG_DEBUG_BACK_TRACE),y)
+# 2nd time link
+	$(NM) -n $@ | $(ALLSYMS_TOOL) > $(SYMBOL_SRC)
+	$(HOSTCC) -I$(CONFIG_UK_BASE)/include $(HOST_EXTRACFLAGS) $(HOSTCFLAGS) -c $(SYMBOL_SRC) -o $(SYMBOL_OBJ)
+	$(call build_cmd,LD,,$@,\
+	       $(LD) $(LDFLAGS) $(LDFLAGS-y) \
+		     $(LINUXU_LDFLAGS) $(LINUXU_LDFLAGS-y) \
+		     $(LINUXU_OLIBS) $(LINUXU_OLIBS-y) \
+		     $(UK_OLIBS) $(UK_OLIBS-y) \
+		     -Wl$(comma)--start-group \
+		     $(LINUXU_ALIBS) $(LINUXU_ALIBS-y) \
+		     $(UK_ALIBS) $(UK_ALIBS-y) \
+		     $(SYMBOL_OBJ) \
+		     -Wl$(comma)--end-group \
+		     $(LINUXU_LD_SCRIPT_FLAGS) \
+		     -o $@)
+# 3rd time
+	$(NM) -n $@ | $(ALLSYMS_TOOL) > $(SYMBOL_SRC)
+	rm -f $(SYMBOL_OBJ)
+	$(HOSTCC) -I$(CONFIG_UK_BASE)/include $(HOST_EXTRACFLAGS) $(HOSTCFLAGS) -c $(SYMBOL_SRC) -o $(SYMBOL_OBJ)
+	$(call build_cmd,LD,,$@,\
+	       $(LD) $(LDFLAGS) $(LDFLAGS-y) \
+		     $(LINUXU_LDFLAGS) $(LINUXU_LDFLAGS-y) \
+		     $(LINUXU_OLIBS) $(LINUXU_OLIBS-y) \
+		     $(UK_OLIBS) $(UK_OLIBS-y) \
+		     -Wl$(comma)--start-group \
+		     $(LINUXU_ALIBS) $(LINUXU_ALIBS-y) \
+		     $(UK_ALIBS) $(UK_ALIBS-y) \
+		     $(SYMBOL_OBJ) \
+		     -Wl$(comma)--end-group \
+		     $(LINUXU_LD_SCRIPT_FLAGS) \
+		     -o $@)
+
+endif
 
 $(LINUXU_IMAGE): $(LINUXU_IMAGE).dbg
 	$(call build_cmd,SCSTRIP,,$@,\
@@ -40,3 +98,7 @@ UK_DEBUG_IMAGES-y                     += $(LINUXU_DEBUG_IMAGE)
 UK_IMAGES-y                           += $(LINUXU_IMAGE)
 UK_IMAGES-$(CONFIG_OPTIMIZE_SYMFILE)  += $(LINUXU_IMAGE).sym
 endif
+
+LIBLINUXUPLAT_CLEAN += $(call build_clean,$(LINUXU_IMAGE).*.o)
+LIBLINUXUPLAT_CLEAN += $(call build_clean,$(SYMBOL_OBJ))
+LIBLINUXUPLAT_CLEAN += $(call build_clean,$(SYMBOL_SRC))

@@ -5,6 +5,8 @@ $(eval $(call addlib_paramprefix,libvfscore,vfs))
 
 CINCLUDES-y += -I$(LIBVFSCORE_BASE)/include
 
+LIBVFSCORE_CFLAGS-y += -fsanitize=kernel-address
+
 LIBVFSCORE_SRCS-y += $(LIBVFSCORE_BASE)/fd.c
 LIBVFSCORE_SRCS-y += $(LIBVFSCORE_BASE)/file.c
 LIBVFSCORE_SRCS-y += $(LIBVFSCORE_BASE)/stdio.c

@@ -139,6 +139,12 @@ config OPTIMIZE_WARNISERROR
 		When this option is enabled, the build system stops
 		compilation when a compiler warning is displayed.
 
+config DEBUG_BACK_TRACE
+	bool "Dumping the backtrace"
+	default n
+	help
+		Dump the backtrace of fuction-call
+
 config OPTIMIZE_SYMFILE
 	bool "Create a symbols file"
 	default n
